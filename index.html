@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>Өнгөт бөмбөг – 211 дүгээр цэцэрлэг</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky-top: #dff3ff;
+    --sky-bottom: #fff7e3;
+    --ink: #2b3a55;
+    --ink-soft: #5d6f8f;
+    --red: #f0453b;
+    --yellow: #ffc61f;
+    --green: #35b957;
+    --panel: rgba(255,255,255,.88);
+    --font: "Nunito", "Trebuchet MS", system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: #eaf7ff;
+    font-family: var(--font); color: var(--ink);
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  body {
+    background: linear-gradient(180deg, var(--sky-top) 0%, #f3fbff 55%, var(--sky-bottom) 100%);
+  }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  .hud {
+    position: fixed; left: 0; right: 0; top: 0; z-index: 2;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 0;
+    display: flex; align-items: flex-start; gap: 10px;
+    pointer-events: none;
+  }
+  .school {
+    flex: 1; min-width: 0;
+    font-weight: 900; font-size: clamp(12px, 3.3vw, 17px); line-height: 1.2;
+    color: var(--ink);
+  }
+  .school small { display: block; font-weight: 700; font-size: .82em; color: var(--ink-soft); }
+  .score-box {
+    background: var(--panel); border-radius: 20px; padding: 6px 18px;
+    text-align: center; box-shadow: 0 3px 0 rgba(43,58,85,.12);
+  }
+  .score-box span { display: block; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
+  .score-box b { display: block; font-size: clamp(28px, 7vw, 38px); font-weight: 900; line-height: 1; }
+  .score-box b.bump { animation: bump .25s ease-out; }
+  @keyframes bump { 40% { transform: scale(1.25); } }
+  .mute {
+    pointer-events: auto; flex: none;
+    width: 44px; height: 44px; border: 0; border-radius: 50%;
+    background: var(--panel); font-size: 21px; cursor: pointer;
+    box-shadow: 0 3px 0 rgba(43,58,85,.12);
+  }
+  .mute:focus-visible, .play:focus-visible { outline: 4px solid #2b6df0; outline-offset: 3px; }
+
+  .mission {
+    position: fixed; z-index: 2; left: 50%; transform: translateX(-50%);
+    top: calc(env(safe-area-inset-top, 0px) + 76px);
+    display: flex; align-items: center; gap: 12px;
+    background: var(--panel); border-radius: 999px; padding: 8px 20px 8px 10px;
+    box-shadow: 0 3px 0 rgba(43,58,85,.12);
+    font-weight: 900; font-size: clamp(15px, 4vw, 19px);
+    pointer-events: none; white-space: nowrap;
+  }
+  .mission .dot { width: 34px; height: 34px; border-radius: 50%; box-shadow: inset -4px -5px 0 rgba(0,0,0,.14), inset 5px 5px 0 rgba(255,255,255,.4); }
+  .mission .need { font-variant-numeric: tabular-nums; }
+
+  .tray {
+    position: fixed; z-index: 2; left: 0; right: 0; bottom: 0;
+    padding: 0 14px calc(env(safe-area-inset-bottom, 0px) + 12px);
+    display: flex; justify-content: center; gap: 12px; pointer-events: none;
+  }
+  .slot {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel); border-radius: 999px; padding: 6px 16px 6px 8px;
+    font-weight: 900; font-size: 22px; font-variant-numeric: tabular-nums;
+    box-shadow: 0 3px 0 rgba(43,58,85,.12);
+  }
+  .slot i { width: 30px; height: 30px; border-radius: 50%; display: block; box-shadow: inset -3px -4px 0 rgba(0,0,0,.14), inset 4px 4px 0 rgba(255,255,255,.4); }
+  .slot.bump { animation: bump .25s ease-out; }
+
+  .praise {
+    position: fixed; z-index: 3; left: 50%; top: 38%;
+    transform: translate(-50%, -50%) scale(.6);
+    font-weight: 900; font-size: clamp(34px, 11vw, 72px); color: var(--ink);
+    text-shadow: 0 4px 0 #fff, 0 0 18px #fff;
+    opacity: 0; pointer-events: none; text-align: center;
+  }
+  .praise.show { animation: praise 1.6s ease-out; }
+  .praise small { display: block; font-size: .4em; color: var(--ink-soft); }
+  @keyframes praise {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); }
+    18% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+    30% { transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+
+  .start {
+    position: fixed; inset: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    background: rgba(234,247,255,.82);
+  }
+  .start.hide { display: none; }
+  .card {
+    width: min(92vw, 440px); text-align: center;
+    background: #fff; border-radius: 32px; padding: 28px 22px 26px;
+    box-shadow: 0 8px 0 rgba(43,58,85,.12);
+  }
+  .card .dots { display: flex; justify-content: center; gap: 10px; margin-bottom: 14px; }
+  .card .dots i { width: 38px; height: 38px; border-radius: 50%; display: block; box-shadow: inset -4px -5px 0 rgba(0,0,0,.14), inset 5px 5px 0 rgba(255,255,255,.4); animation: float 2.4s ease-in-out infinite; }
+  .card .dots i:nth-child(2) { animation-delay: .3s; }
+  .card .dots i:nth-child(3) { animation-delay: .6s; }
+  @keyframes float { 50% { transform: translateY(-9px); } }
+  .card .kg { font-weight: 900; font-size: 16px; line-height: 1.3; color: var(--ink-soft); margin: 0 0 6px; }
+  .card h1 { margin: 0 0 10px; font-size: clamp(30px, 9vw, 42px); line-height: 1.05; font-weight: 900; }
+  .card p.how { margin: 0 0 22px; font-size: 17px; line-height: 1.45; font-weight: 700; color: var(--ink-soft); }
+  .play {
+    border: 0; cursor: pointer; font-family: var(--font); font-weight: 900; font-size: 26px;
+    color: #fff; background: var(--green); border-radius: 999px; padding: 14px 46px;
+    box-shadow: 0 6px 0 #24873f; transition: transform .08s, box-shadow .08s;
+  }
+  .play:active { transform: translateY(4px); box-shadow: 0 2px 0 #24873f; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card .dots i { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game" aria-label="Бөмбөг хагалах тоглоом"></canvas>
+
+<div class="hud">
+  <div class="school">Нийслэлийн хүүхдийн<small>211 дүгээр цэцэрлэг</small></div>
+  <div class="score-box"><span>Оноо</span><b id="score">0</b></div>
+  <button class="mute" id="mute" aria-label="Дууг хаах / нээх">🔊</button>
+</div>
+
+<div class="mission" id="mission" aria-live="polite">
+  <span class="dot" id="mDot"></span>
+  <span id="mText"></span>
+</div>
+
+<div class="tray">
+  <div class="slot" id="s-red"><i style="background:var(--red)"></i><span>0</span></div>
+  <div class="slot" id="s-yellow"><i style="background:var(--yellow)"></i><span>0</span></div>
+  <div class="slot" id="s-green"><i style="background:var(--green)"></i><span>0</span></div>
+</div>
+
+<div class="praise" id="praise"></div>
+
+<div class="start" id="start">
+  <div class="card">
+    <div class="dots"><i style="background:var(--red)"></i><i style="background:var(--yellow)"></i><i style="background:var(--green)"></i></div>
+    <p class="kg">Нийслэлийн хүүхдийн<br>211 дүгээр цэцэрлэг</p>
+    <h1>Өнгөт бөмбөг</h1>
+    <p class="how">Бөмбөгийг хуруугаараа дар! Даалгаврын өнгийг олж цуглуулаад оноо ав.</p>
+    <button class="play" id="play">Тоглох</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var canvas = document.getElementById('game');
+  var ctx = canvas.getContext('2d');
+  var W = 0, H = 0, dpr = 1;
+
+  var COLORS = {
+    red:    { name: 'Улаан',  fill: '#f0453b', dark: '#b82a22', light: '#ff8a80', pitch: 330 },
+    yellow: { name: 'Шар',    fill: '#ffc61f', dark: '#d99a00', light: '#ffe58a', pitch: 440 },
+    green:  { name: 'Ногоон', fill: '#35b957', dark: '#238a40', light: '#8fe3a3', pitch: 392 }
+  };
+  var KEYS = ['red', 'yellow', 'green'];
+
+  var balls = [], bits = [], pops = [], rings = [], clouds = [];
+  var score = 0, running = false, muted = false;
+  var counts = { red: 0, yellow: 0, green: 0 };
+  var target = 'red', need = 5, have = 0;
+  var spawnTimer = 0, last = 0, clock = 0;
+
+  var elScore = document.getElementById('score');
+  var elDot = document.getElementById('mDot');
+  var elText = document.getElementById('mText');
+  var elPraise = document.getElementById('praise');
+
+  /* ---------- sizing ---------- */
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!clouds.length) makeClouds();
+  }
+  window.addEventListener('resize', resize);
+
+  function makeClouds() {
+    for (var i = 0; i < 5; i++) {
+      clouds.push({ x: Math.random() * W, y: 90 + Math.random() * (H * 0.55), s: 0.7 + Math.random() * 0.8, v: 4 + Math.random() * 6 });
+    }
+  }
+
+  /* ---------- audio ---------- */
+  var ac = null;
+  function initAudio() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; }
+  }
+  function popSound(freq) {
+    if (!ac || muted) return;
+    var t = ac.currentTime;
+    // noise burst
+    var len = Math.floor(ac.sampleRate * 0.14);
+    var buf = ac.createBuffer(1, len, ac.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+    var src = ac.createBufferSource(); src.buffer = buf;
+    var bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 0.7;
+    var g1 = ac.createGain(); g1.gain.setValueAtTime(0.7, t); g1.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    src.connect(bp); bp.connect(g1); g1.connect(ac.destination); src.start(t);
+    // body "pop"
+    var o = ac.createOscillator(); o.type = 'sine';
+    o.frequency.setValueAtTime(freq * 1.6, t);
+    o.frequency.exponentialRampToValueAtTime(freq * 0.45, t + 0.12);
+    var g2 = ac.createGain(); g2.gain.setValueAtTime(0.5, t); g2.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g2); g2.connect(ac.destination); o.start(t); o.stop(t + 0.16);
+  }
+  function jingle() {
+    if (!ac || muted) return;
+    var notes = [523, 659, 784, 1047];
+    notes.forEach(function (f, i) {
+      var t = ac.currentTime + i * 0.11;
+      var o = ac.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
+      var g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + 0.3);
+    });
+  }
+
+  /* ---------- mission ---------- */
+  function newTarget(prev) {
+    var opts = KEYS.filter(function (k) { return k !== prev; });
+    target = opts[Math.floor(Math.random() * opts.length)];
+    have = 0; need = 5;
+    renderMission();
+  }
+  function renderMission() {
+    elDot.style.background = COLORS[target].fill;
+    elText.innerHTML = COLORS[target].name + ' бөмбөг: <span class="need">' + have + ' / ' + need + '</span>';
+  }
+
+  var praises = ['Сайн байна!', 'Мундаг!', 'Гайхалтай!', 'Баяр хүргэе!'];
+  function praise() {
+    elPraise.innerHTML = praises[Math.floor(Math.random() * praises.length)] + '<small>+5 оноо</small>';
+    elPraise.classList.remove('show'); void elPraise.offsetWidth; elPraise.classList.add('show');
+  }
+
+  function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+  /* ---------- balls ---------- */
+  function radius() { return Math.max(34, Math.min(58, Math.min(W, H) * 0.085)); }
+
+  function spawn() {
+    if (balls.length > 12) return;
+    var r = radius() * (0.85 + Math.random() * 0.3);
+    var key = KEYS[Math.floor(Math.random() * 3)];
+    // make the mission colour appear a bit more often
+    if (Math.random() < 0.28) key = target;
+    var baseX = r + 6 + Math.random() * (W - 2 * r - 12);
+    balls.push({
+      key: key, r: r, baseX: baseX, x: baseX, y: -r - 4,
+      vy: 38 + Math.random() * 32,               // slow fall, px/s
+      amp: 6 + Math.random() * 14, freq: 0.6 + Math.random() * 0.7, ph: Math.random() * 6.28
+    });
+  }
+
+  function burst(b) {
+    var c = COLORS[b.key];
+    for (var i = 0; i < 16; i++) {
+      var a = Math.random() * 6.283, sp = 90 + Math.random() * 190;
+      bits.push({ x: b.x, y: b.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, r: 3 + Math.random() * 5, life: 0.7 + Math.random() * 0.3, t: 0, c: Math.random() < 0.7 ? c.fill : c.light });
+    }
+    rings.push({ x: b.x, y: b.y, r: b.r * 0.6, c: c.fill, t: 0 });
+  }
+
+  function confetti() {
+    var cols = ['#f0453b', '#ffc61f', '#35b957', '#3b8bf0', '#ff7ab8'];
+    for (var i = 0; i < 46; i++) {
+      bits.push({ x: Math.random() * W, y: -10 - Math.random() * 60, vx: (Math.random() - .5) * 60, vy: 120 + Math.random() * 160, r: 4 + Math.random() * 5, life: 2.2, t: 0, c: cols[i % cols.length], grav: 40 });
+    }
+  }
+
+  function hit(px, py) {
+    for (var i = balls.length - 1; i >= 0; i--) {
+      var b = balls[i], dx = px - b.x, dy = py - b.y;
+      if (dx * dx + dy * dy <= (b.r * 1.18) * (b.r * 1.18)) {
+        balls.splice(i, 1);
+        burst(b);
+        popSound(COLORS[b.key].pitch);
+        score += 1;
+        counts[b.key] += 1;
+        pops.push({ x: b.x, y: b.y - b.r * 0.4, t: 0, text: '+1', c: COLORS[b.key].dark });
+        elScore.textContent = score; bump(elScore);
+        var slot = document.getElementById('s-' + b.key);
+        slot.querySelector('span').textContent = counts[b.key]; bump(slot);
+
+        if (b.key === target) {
+          have += 1;
+          if (have >= need) {
+            score += 5; elScore.textContent = score;
+            praise(); jingle(); confetti();
+            var prev = target; newTarget(prev);
+          } else renderMission();
+        }
+        return;
+      }
+    }
+  }
+
+  function onPointer(e) {
+    if (!running) return;
+    var rect = canvas.getBoundingClientRect();
+    hit(e.clientX - rect.left, e.clientY - rect.top);
+    e.preventDefault();
+  }
+  canvas.addEventListener('pointerdown', onPointer);
+
+  /* ---------- drawing ---------- */
+  function drawCloud(c) {
+    ctx.save();
+    ctx.translate(c.x, c.y); ctx.scale(c.s, c.s);
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, 6.283);
+    ctx.arc(30, -10, 32, 0, 6.283);
+    ctx.arc(66, 0, 26, 0, 6.283);
+    ctx.rect(0, 0, 66, 26);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBall(b) {
+    var c = COLORS[b.key];
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    // soft shadow
+    ctx.fillStyle = 'rgba(43,58,85,.10)';
+    ctx.beginPath(); ctx.ellipse(4, b.r + 6, b.r * 0.7, b.r * 0.16, 0, 0, 6.283); ctx.fill();
+    // body
+    var g = ctx.createRadialGradient(-b.r * 0.35, -b.r * 0.4, b.r * 0.1, 0, 0, b.r);
+    g.addColorStop(0, c.light);
+    g.addColorStop(0.35, c.fill);
+    g.addColorStop(1, c.dark);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, b.r, 0, 6.283); ctx.fill();
+    // star-like stripe
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = b.r * 0.12;
+    ctx.beginPath(); ctx.arc(0, 0, b.r * 0.62, 0.4, 1.6); ctx.stroke();
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    ctx.beginPath(); ctx.ellipse(-b.r * 0.38, -b.r * 0.42, b.r * 0.18, b.r * 0.1, -0.7, 0, 6.283); ctx.fill();
+    ctx.restore();
+  }
+
+  /* ---------- loop ---------- */
+  function frame(ts) {
+    var dt = Math.min((ts - last) / 1000 || 0, 0.05);
+    last = ts; clock += dt;
+
+    ctx.clearRect(0, 0, W, H);
+    for (var i = 0; i < clouds.length; i++) {
+      var c = clouds[i];
+      c.x += c.v * dt;
+      if (c.x - 20 > W) c.x = -120;
+      drawCloud(c);
+    }
+
+    if (running) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0) { spawn(); spawnTimer = 0.9 + Math.random() * 0.8; }
+    }
+
+    for (i = balls.length - 1; i >= 0; i--) {
+      var b = balls[i];
+      b.y += b.vy * dt;
+      b.x = b.baseX + Math.sin(clock * b.freq + b.ph) * b.amp;
+      if (b.y - b.r > H + 10) balls.splice(i, 1);
+    }
+    balls.forEach(drawBall);
+
+    for (i = rings.length - 1; i >= 0; i--) {
+      var rg = rings[i]; rg.t += dt;
+      var k = rg.t / 0.35;
+      if (k >= 1) { rings.splice(i, 1); continue; }
+      ctx.globalAlpha = 1 - k; ctx.strokeStyle = rg.c; ctx.lineWidth = 6 * (1 - k) + 1;
+      ctx.beginPath(); ctx.arc(rg.x, rg.y, rg.r + k * 46, 0, 6.283); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+    for (i = bits.length - 1; i >= 0; i--) {
+      var p = bits[i]; p.t += dt;
+      if (p.t >= p.life) { bits.splice(i, 1); continue; }
+      p.vy += (p.grav || 420) * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      ctx.globalAlpha = Math.max(0, 1 - p.t / p.life);
+      ctx.fillStyle = p.c;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    for (i = pops.length - 1; i >= 0; i--) {
+      var q = pops[i]; q.t += dt;
+      if (q.t >= 0.8) { pops.splice(i, 1); continue; }
+      ctx.globalAlpha = 1 - q.t / 0.8;
+      ctx.fillStyle = q.c;
+      ctx.font = '900 30px Nunito, "Trebuchet MS", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(q.text, q.x, q.y - q.t * 60);
+      ctx.globalAlpha = 1;
+    }
+
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- controls ---------- */
+  document.getElementById('play').addEventListener('click', function () {
+    initAudio();
+    document.getElementById('start').classList.add('hide');
+    running = true; spawnTimer = 0.2;
+    popSound(392);
+  });
+  document.getElementById('mute').addEventListener('click', function (e) {
+    muted = !muted;
+    e.currentTarget.textContent = muted ? '🔇' : '🔊';
+    if (!muted) initAudio();
+  });
+
+  resize();
+  newTarget('');
+  // a few balls already floating behind the start card
+  for (var n = 0; n < 5; n++) { spawn(); balls[balls.length - 1].y = Math.random() * H * 0.7; }
+  requestAnimationFrame(function (t) { last = t; frame(t); });
+})();
+</script>
+</body>
+</html>
